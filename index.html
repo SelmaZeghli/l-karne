@@ -1650,6 +1650,36 @@
       }
     }
 
+    function jsonp(url) {
+      return new Promise((resolve, reject) => {
+        const cbName = 'lkarne_cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+        const script = document.createElement('script');
+        const sep = url.includes('?') ? '&' : '?';
+        const timeout = setTimeout(() => {
+          delete window[cbName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          reject(new Error('Délai d\'attente dépassé (vérifiez les autorisations de déploiement)'));
+        }, 10000);
+
+        window[cbName] = function(data) {
+          clearTimeout(timeout);
+          delete window[cbName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          resolve(data);
+        };
+
+        script.onerror = function() {
+          clearTimeout(timeout);
+          delete window[cbName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          reject(new Error('Impossible de contacter Apps Script. Assurez-vous que "Qui a accès" est réglé sur "Tout le monde" (Anyone).'));
+        };
+
+        script.src = url + sep + 'callback=' + cbName;
+        document.body.appendChild(script);
+      });
+    }
+
     async function testApiConnection() {
       const url = document.getElementById('settings-api-url')?.value.trim();
       if (!url) {
@@ -1658,20 +1688,40 @@
       }
 
       showSpinner(true, 'Test du Web App Google Apps Script...');
+      const isFileProtocol = window.location.protocol === 'file:';
+
       try {
         const pingUrl = url + (url.includes('?') ? '&' : '?') + 'action=ping';
-        const res = await fetch(pingUrl, { method: 'GET' });
-        const data = await res.json();
-        if (data.success) {
+        let data = null;
+
+        if (isFileProtocol) {
+          // In file:/// protocol, browsers block fetch redirects, try JSONP
+          data = await jsonp(pingUrl);
+        } else {
+          try {
+            const res = await fetch(pingUrl, { method: 'GET' });
+            data = await res.json();
+          } catch (fetchErr) {
+            // Fallback to JSONP if fetch had a CORS redirect issue
+            data = await jsonp(pingUrl);
+          }
+        }
+
+        if (data && data.success) {
           playSound('success');
           showToast('Connexion réussie avec Google Sheets ! 🟢');
+          if (isFileProtocol) {
+            alert('Connexion réussie ! Note : Pour une expérience optimale en production, servez cette page via un serveur HTTP local (ex: python -m http.server 8000) ou publiez sur GitHub Pages.');
+          }
         } else {
           playSound('error');
           showToast('Réponse inattendue: ' + JSON.stringify(data), 'error');
         }
       } catch (e) {
         playSound('error');
-        showToast('Échec de la connexion: ' + e.message, 'error');
+        console.error('Test connection error:', e);
+        showToast('Échec : ' + e.message, 'error');
+        alert('ÉCHEC DE CONNEXION :\n\n1. Dans Google Apps Script : Vérifiez que "Qui a accès" (Who has access) est bien sur "Tout le monde" (Anyone).\n2. Si vous ouvrez le fichier en double-cliquant (file:///), lancez un serveur local ou publiez sur GitHub Pages.');
       } finally {
         showSpinner(false);
       }

@@ -99,22 +99,30 @@ function createJsonResponse(data) {
  */
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'ping';
+  const callback = e && e.parameter && e.parameter.callback;
+
+  let responseData = { success: false, error: 'Action GET invalide' };
 
   if (action === 'ping') {
-    return createJsonResponse({
+    responseData = {
       success: true,
       service: 'L-Karné Web App API',
       status: 'online',
       timestamp: new Date().toISOString()
-    });
+    };
+  } else if (action === 'setup') {
+    responseData = setupDatabase();
+  } else if (action === 'auth/list_public_users') {
+    responseData = handleListPublicUsers();
   }
 
-  if (action === 'setup') {
-    const result = setupDatabase();
-    return createJsonResponse(result);
+  // Support JSONP for environments with strict CORS policies or file:// origins
+  if (callback) {
+    return ContentService.createTextOutput(callback + '(' + JSON.stringify(responseData) + ');')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
 
-  return createJsonResponse({ success: false, error: 'Invalid GET action' });
+  return createJsonResponse(responseData);
 }
 
 /**
