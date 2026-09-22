@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>L-Karné — SnackBox & Kridi Tracker Bureau</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍪</text></svg>">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -854,6 +855,10 @@
         });
 
         const data = await response.json();
+        if (!data.success && data.error && (data.error.includes('Unauthorized') || data.error.includes('Session invalid'))) {
+          showToast('Session expirée ou non autorisée. Veuillez vous reconnecter.', 'error');
+          logout();
+        }
         return data;
       } catch (error) {
         console.error('API Error:', error);
@@ -1638,12 +1643,15 @@
 
     function saveApiUrl() {
       const url = document.getElementById('settings-api-url')?.value.trim() || '';
+      const isNew = (apiUrl !== url);
       apiUrl = url;
       localStorage.setItem(KEY_API_URL, apiUrl);
       updateBackendStatusBadge();
       closeModal('settings-modal');
       showToast('Configuration enregistrée !');
-      if (currentUser) {
+      if (isNew || (sessionToken && sessionToken.startsWith('mock-token'))) {
+        logout();
+      } else if (currentUser) {
         loadDashboardData();
       } else {
         loadPublicUsersForLogin();
