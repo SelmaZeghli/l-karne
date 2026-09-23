@@ -854,7 +854,21 @@
           body: JSON.stringify(reqData)
         });
 
-        const data = await response.json();
+        const text = await response.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (parseErr) {
+          console.error("Réponse reçue (non-JSON):", text.slice(0, 300));
+          if (text.includes('accounts.google.com') || text.includes('signin') || text.includes('ServiceLogin') || text.includes('<!DOCTYPE') || text.includes('<!doctype')) {
+            const msg = 'L\'application Web Google exige une connexion Google (Redirection de sécurité).\n\nDans Google Apps Script :\n1. Allez dans Déployer > Nouveau déploiement.\n2. Choisissez "Tout le monde" (Anyone) pour "Qui a accès".\n\nNote : Si votre compte Google Workspace bloque l\'option "Tout le monde", déployez le script sur un compte Gmail standard (@gmail.com).';
+            showToast('Accès restreint par Google (Connexion exigée)', 'error');
+            alert(msg);
+            return { success: false, error: msg };
+          }
+          return { success: false, error: 'Réponse serveur non-JSON : ' + text.slice(0, 100) };
+        }
+
         if (!data.success && data.error && (data.error.includes('Unauthorized') || data.error.includes('Session invalid'))) {
           showToast('Session expirée ou non autorisée. Veuillez vous reconnecter.', 'error');
           logout();
