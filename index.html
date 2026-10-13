@@ -1368,7 +1368,7 @@
       if (!grid) return;
 
       const filtered = products.filter(p => {
-        if (Number(p.stock_qty) <= 0) return false;
+        if (getAvailablePurchaseQuantity(p) <= 0) return false;
         const matchesCat = currentCategory === 'ALL' || p.category === currentCategory;
         const matchesSearch = p.name.toLowerCase().includes(search) || (p.category && p.category.toLowerCase().includes(search));
         return matchesCat && matchesSearch;
@@ -1382,11 +1382,16 @@
       emptyState.classList.add('hidden');
 
       grid.innerHTML = filtered.map(p => {
-        const isLowStock = p.stock_qty <= 3;
+        const inventoryUnitsPerSale = getInventoryUnitsPerSale(p);
+        const availablePurchaseQuantity = getAvailablePurchaseQuantity(p);
+        const isLowStock = availablePurchaseQuantity <= 3;
         
-        let stockBadge = `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-md">${p.stock_qty} en stock</span>`;
+        let stockBadge = `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-md">${availablePurchaseQuantity} en stock</span>`;
         if (isLowStock) {
-          stockBadge = `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md">B9aw ghir ${p.stock_qty}</span>`;
+          stockBadge = `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md">B9aw ghir ${availablePurchaseQuantity}</span>`;
+        }
+        if (inventoryUnitsPerSale > 1) {
+          stockBadge = `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md">${availablePurchaseQuantity} lots × 3</span>`;
         }
 
         const isEmoji = !isImageUrl(p.image_url);
@@ -1425,6 +1430,18 @@
     }
 
     // ==================== PURCHASE ACTION ====================
+    function getInventoryUnitsPerSale(product) {
+      const configuredUnits = Number(product.inventory_units_per_sale);
+      if (Number.isSafeInteger(configuredUnits) && configuredUnits > 0) return configuredUnits;
+      if (product.id === 'p47' || product.id === 'p60') return 3;
+      return /^(?:tea|trident)\s*\(\s*3\s*pc\s*\)$/i.test(String(product.name || '').trim()) ? 3 : 1;
+    }
+
+    function getAvailablePurchaseQuantity(product) {
+      const inventoryUnitsPerSale = getInventoryUnitsPerSale(product);
+      return Math.floor(Math.max(0, Number(product.stock_qty) || 0) / inventoryUnitsPerSale);
+    }
+
     function promptPurchase(productId) {
       const p = products.find(prod => prod.id === productId);
       if (!p) return;
@@ -1438,7 +1455,11 @@
       document.getElementById('confirm-modal-price').textContent = `${Number(p.price_mad).toFixed(2)} DH`;
       const quantityInput = document.getElementById('purchase-quantity');
       quantityInput.value = '1';
-      quantityInput.max = String(p.stock_qty);
+      const availablePurchaseQuantity = getAvailablePurchaseQuantity(p);
+      quantityInput.max = String(availablePurchaseQuantity);
+      const isThreePieceSale = getInventoryUnitsPerSale(p) === 3;
+      document.querySelector('label[for="purchase-quantity"]').textContent =
+        isThreePieceSale ? 'Lots de 3 pièces à prendre' : 'Quantité prise';
       document.querySelector('input[name="purchase-payment"][value="unpaid"]').checked = true;
       updatePurchasePaymentChoice();
 
@@ -1452,9 +1473,15 @@
       const quantity = Math.max(1, Number(quantityInput.value) || 1);
       const total = Number(pendingPurchaseProduct?.price_mad || 0) * quantity;
       document.querySelector('#confirm-purchase-btn span').textContent = `Khditha (${quantity})`;
+      const inventoryUnitsPerSale = pendingPurchaseProduct
+        ? getInventoryUnitsPerSale(pendingPurchaseProduct)
+        : 1;
+      const stockNote = inventoryUnitsPerSale > 1
+        ? `<br><span class="text-[11px] text-slate-500">Prix pour 3 pièces; le stock diminue de ${quantity * inventoryUnitsPerSale} pièces.</span>`
+        : '';
       document.getElementById('confirm-modal-desc').innerHTML = isPaid
-        ? `Article payé maintenant : <strong>${total.toFixed(2)} DH</strong> seront ajoutés à la caisse.`
-        : `Bghiti takhod had l'article ? Ghadi ytzad <strong>${total.toFixed(2)} DH</strong> l'kridi dyalek.`;
+        ? `Article payé maintenant : <strong>${total.toFixed(2)} DH</strong> seront ajoutés à la caisse.${stockNote}`
+        : `Bghiti takhod had l'article ? Ghadi ytzad <strong>${total.toFixed(2)} DH</strong> l'kridi dyalek.${stockNote}`;
     }
 
     async function executePurchase() {
@@ -1464,7 +1491,7 @@
       const p = pendingPurchaseProduct;
       const quantity = Number(document.getElementById('purchase-quantity').value);
       const paid = document.querySelector('input[name="purchase-payment"]:checked')?.value === 'paid';
-      if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > p.stock_qty) {
+      if (!Number.isSafeInteger(quantity) || quantity <= 0 || quantity > getAvailablePurchaseQuantity(p)) {
         showToast('Quantité invalide ou supérieure au stock disponible.', 'error');
         openModal('purchase-modal');
         return;
