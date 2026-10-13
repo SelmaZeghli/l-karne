@@ -179,7 +179,6 @@
         <button id="nav-tab" onclick="switchView('tab')" class="nav-tab flex items-center gap-2 py-1.5 px-3 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100">
           <i data-lucide="book-open" class="w-4 h-4"></i>
           <span>Mon Karné (Dette)</span>
-          <span id="personal-tx-count-badge" class="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded-full">0</span>
         </button>
         <button id="nav-admin" onclick="switchView('admin')" class="nav-tab hidden flex items-center gap-2 py-1.5 px-3 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100">
           <i data-lucide="shield-check" class="w-4 h-4"></i>
@@ -697,7 +696,7 @@
       <div class="flex items-start justify-between gap-3">
         <div>
           <h3 class="font-bold text-slate-900 text-base">Modifier le produit</h3>
-          <p class="text-xs text-slate-500 mt-1">Corrigez son nom ou sa catégorie.</p>
+          <p class="text-xs text-slate-500 mt-1">Modifiez son nom, son prix de vente ou sa catégorie.</p>
         </div>
         <button type="button" onclick="closeModal('edit-product-modal')" class="p-1 text-slate-400 hover:text-slate-700" aria-label="Fermer">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -711,6 +710,10 @@
         <div>
           <label for="edit-product-name" class="block text-xs font-semibold text-slate-700 mb-1">Nom du produit</label>
           <input id="edit-product-name" type="text" maxlength="120" required class="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label for="edit-product-price" class="block text-xs font-semibold text-slate-700 mb-1">Prix de vente (DH)</label>
+          <input id="edit-product-price" type="number" min="0" step="0.01" required inputmode="decimal" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-emerald-500">
         </div>
         <div>
           <label for="edit-product-category" class="block text-xs font-semibold text-slate-700 mb-1">Catégorie</label>
@@ -1321,9 +1324,10 @@
       personalBalance.className = `text-3xl font-black mt-1 ${debt > 0 ? 'text-rose-600' : (debt < 0 ? 'text-emerald-700' : 'text-slate-800')}`;
 
       // Update personal item count
-      const purchaseCount = personalTransactions.filter(t => t.type === 'purchase').length;
-      document.getElementById('tab-user-items-count').textContent = purchaseCount;
-      document.getElementById('personal-tx-count-badge').textContent = purchaseCount;
+      const purchasedItemCount = personalTransactions
+        .filter(transaction => transaction.type === 'purchase')
+        .reduce((total, transaction) => total + (Number(transaction.quantity) || 0), 0);
+      document.getElementById('tab-user-items-count').textContent = purchasedItemCount;
 
       renderCategoryFilters();
       renderProductGrid();
@@ -1766,8 +1770,9 @@
       }
       editingProductId = productId;
       document.getElementById('edit-product-current-info').textContent =
-        `${product.name} · ${product.category}`;
+        `${product.name} · ${product.category} · ${Number(product.price_mad).toFixed(2)} DH`;
       document.getElementById('edit-product-name').value = product.name;
+      document.getElementById('edit-product-price').value = Number(product.price_mad).toFixed(2);
 
       const categorySelect = document.getElementById('edit-product-category');
       const categories = [...new Set(adminData.products.map(item => item.category).filter(Boolean))]
@@ -1801,15 +1806,19 @@
         return;
       }
       const nameInput = document.getElementById('edit-product-name');
+      const priceInput = document.getElementById('edit-product-price');
       const categorySelect = document.getElementById('edit-product-category');
       const newCategoryInput = document.getElementById('new-product-category');
       const name = nameInput.value.trim();
+      const price = Number(priceInput.value);
       const category = categorySelect.value === '__add_new_category__'
         ? newCategoryInput.value.trim()
         : categorySelect.value.trim();
-      if (!name || name.length > 120 || !category || category.length > 60) {
-        showToast('Saisissez un nom (1 à 120 caractères) et une catégorie (1 à 60 caractères).', 'error');
+      if (!name || name.length > 120 || !category || category.length > 60 ||
+          !Number.isFinite(price) || price < 0) {
+        showToast('Saisissez un nom, une catégorie et un prix de vente valide.', 'error');
         if (!name || name.length > 120) nameInput.focus();
+        else if (!Number.isFinite(price) || price < 0) priceInput.focus();
         else if (categorySelect.value === '__add_new_category__') newCategoryInput.focus();
         else categorySelect.focus();
         return;
@@ -1818,7 +1827,8 @@
       const res = await apiCall('admin/update_product_details', {
         productId: editingProductId,
         name: name,
-        category: category
+        category: category,
+        price_mad: price
       });
       if (!res.success) {
         showToast(res.error || 'Impossible de modifier ce produit.', 'error');
@@ -1826,7 +1836,7 @@
       }
       closeModal('edit-product-modal');
       editingProductId = null;
-      showToast('Nom et catégorie du produit enregistrés.');
+      showToast('Nom, catégorie et prix de vente enregistrés.');
       await loadAdminData();
       await loadDashboardData();
     }
