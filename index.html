@@ -425,7 +425,7 @@
           <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Caisse enregistrée</div>
           <div class="text-2xl sm:text-3xl font-black text-emerald-700 mt-1" id="admin-stat-earnings">—</div>
           <div class="text-[11px] text-slate-400 mt-0.5" id="admin-earnings-description">
-            Montant compté + encaissements suivants
+            Comptage + recettes − achats de stock
           </div>
           <button id="set-opening-cash-btn" onclick="openOpeningCashModal()" class="mt-2 text-[11px] text-emerald-700 font-bold hover:underline">
             Saisir / mettre à jour la caisse comptée
@@ -504,8 +504,8 @@
         <!-- Section B: Product Inventory Table -->
         <div id="admin-section-inventory" class="hidden bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-soft space-y-4">
           <div class="flex items-center justify-between">
-            <h3 class="font-bold text-slate-800 text-sm">Gestion des Stocks et Réapprovisionnement</h3>
-            <span class="text-xs text-slate-400">Ajout ou correction du stock</span>
+            <h3 class="font-bold text-slate-800 text-sm">Gestion du stock</h3>
+            <span class="text-xs text-slate-400">Utilisez Achat pour ajouter du stock</span>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -527,11 +527,11 @@
             <table class="w-full text-left text-xs sm:text-sm">
               <thead>
                 <tr class="border-b border-slate-100 text-slate-400 text-[11px] uppercase tracking-wider font-semibold">
-                  <th class="pb-3">Article & image</th>
+                  <th class="pb-3">Nom du produit & image</th>
                   <th class="pb-3">Catégorie</th>
                   <th class="pb-3">Prix Vente</th>
                   <th class="pb-3">Stock Actuel</th>
-                  <th class="pb-3 text-right">Action Restock</th>
+                  <th class="pb-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody id="admin-inventory-tbody" class="divide-y divide-slate-100 text-slate-700">
@@ -558,6 +558,7 @@
                   <option value="purchase">Achats</option>
                   <option value="payment">Paiements / corrections</option>
                   <option value="restock">Stocks</option>
+                  <option value="inventory_purchase">Achats de stock</option>
                 </select>
                 <input id="admin-activity-date-filter" type="date" onchange="renderAdminActivityTable()" aria-label="Filtrer à partir de la date" class="px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -642,10 +643,107 @@
       <form onsubmit="submitOpeningCash(event)" class="space-y-3">
         <label for="opening-cash-input" class="block text-xs font-semibold text-slate-700">Montant actuel (DH)</label>
         <input type="number" id="opening-cash-input" min="0" step="0.01" required value="0" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-emerald-500">
-        <p class="text-[11px] text-slate-400">Les ventes payées et règlements enregistrés après ce comptage seront ajoutés. Les achats de stock ne sont pas déduits.</p>
+        <p class="text-[11px] text-slate-400">Après ce comptage, les ventes payées et règlements seront ajoutés; les achats de stock seront déduits.</p>
         <div class="flex gap-2">
           <button type="button" onclick="closeModal('opening-cash-modal')" class="flex-1 py-2.5 border border-slate-200 text-slate-600 font-semibold rounded-xl text-xs">Annuler</button>
           <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs">Enregistrer le comptage</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin inventory purchase modal -->
+  <div id="inventory-purchase-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4">
+      <div class="flex items-start gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+          <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Enregistrer un achat de stock</h3>
+          <p class="text-xs text-slate-500 mt-1">La quantité sera ajoutée à l’inventaire et le coût total sera déduit de la caisse enregistrée.</p>
+        </div>
+      </div>
+      <div class="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+        <div class="text-[10px] uppercase tracking-wide font-bold text-slate-400">Produit</div>
+        <div id="inventory-purchase-product" class="font-bold text-slate-800 text-sm mt-0.5">—</div>
+      </div>
+      <form onsubmit="submitInventoryPurchase(event)" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="inventory-purchase-quantity" class="block text-xs font-semibold text-slate-700 mb-1">Quantité achetée</label>
+            <input id="inventory-purchase-quantity" type="number" min="1" step="1" required inputmode="numeric" value="1" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-amber-500">
+          </div>
+          <div>
+            <label for="inventory-purchase-cost" class="block text-xs font-semibold text-slate-700 mb-1">Coût total payé (DH)</label>
+            <input id="inventory-purchase-cost" type="number" min="0.01" step="0.01" required inputmode="decimal" placeholder="Ex. 120.00" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-amber-500">
+          </div>
+        </div>
+        <div>
+          <label for="inventory-purchase-notes" class="block text-xs font-semibold text-slate-700 mb-1">Note (facultatif)</label>
+          <input id="inventory-purchase-notes" type="text" maxlength="200" placeholder="Ex. Fournisseur ou référence" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500">
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="closeModal('inventory-purchase-modal')" class="flex-1 py-2.5 border border-slate-200 text-slate-600 font-semibold rounded-xl text-xs hover:bg-slate-50">Annuler</button>
+          <button type="submit" class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs shadow-sm">Enregistrer l’achat</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Product Modal (Admin) -->
+  <div id="edit-product-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">Modifier le produit</h3>
+          <p class="text-xs text-slate-500 mt-1">Corrigez son nom ou sa catégorie.</p>
+        </div>
+        <button type="button" onclick="closeModal('edit-product-modal')" class="p-1 text-slate-400 hover:text-slate-700" aria-label="Fermer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
+        <div class="text-[10px] uppercase tracking-wide font-bold text-slate-400">Produit sélectionné</div>
+        <div id="edit-product-current-info" class="font-semibold text-slate-700 text-xs mt-1"></div>
+      </div>
+      <form onsubmit="saveProductDetails(event)" class="space-y-3">
+        <div>
+          <label for="edit-product-name" class="block text-xs font-semibold text-slate-700 mb-1">Nom du produit</label>
+          <input id="edit-product-name" type="text" maxlength="120" required class="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label for="edit-product-category" class="block text-xs font-semibold text-slate-700 mb-1">Catégorie</label>
+          <select id="edit-product-category" onchange="toggleNewProductCategory()" required class="w-full px-3 py-2.5 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-emerald-500"></select>
+        </div>
+        <div id="new-product-category-wrap" class="hidden">
+          <label for="new-product-category" class="block text-xs font-semibold text-slate-700 mb-1">Nouvelle catégorie</label>
+          <input id="new-product-category" type="text" maxlength="60" placeholder="Saisir le nom de la catégorie" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="closeModal('edit-product-modal')" class="flex-1 py-2.5 border border-slate-200 text-slate-600 font-semibold rounded-xl text-xs hover:bg-slate-50">Annuler</button>
+          <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-sm">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Correct stock downward modal (Admin) -->
+  <div id="remove-stock-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-100 space-y-4">
+      <div>
+        <h3 class="font-bold text-slate-900 text-base">Corriger le stock</h3>
+        <p class="text-xs text-slate-500 mt-1">Retirez des unités pour corriger une erreur d’inventaire. Pour tout nouvel achat, utilisez <strong>Achat</strong>.</p>
+      </div>
+      <div id="remove-stock-product" class="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5 font-semibold text-slate-700 text-xs"></div>
+      <form onsubmit="submitRemoveStock(event)" class="space-y-3">
+        <div>
+          <label for="remove-stock-quantity" class="block text-xs font-semibold text-slate-700 mb-1">Quantité à retirer</label>
+          <input id="remove-stock-quantity" type="number" min="1" step="1" required inputmode="numeric" value="1" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-rose-500">
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="closeModal('remove-stock-modal')" class="flex-1 py-2.5 border border-slate-200 text-slate-600 font-semibold rounded-xl text-xs hover:bg-slate-50">Annuler</button>
+          <button type="submit" class="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs">Confirmer le retrait</button>
         </div>
       </form>
     </div>
@@ -890,6 +988,9 @@
     let currentCategory = 'ALL';
     let enteredPin = '';
     let pendingPurchaseProduct = null;
+    let inventoryPurchaseProductId = null;
+    let editingProductId = null;
+    let removingStockProductId = null;
     let settleTargetUser = null;
     let sessionUserValidated = false;
 
@@ -1263,6 +1364,7 @@
       if (!grid) return;
 
       const filtered = products.filter(p => {
+        if (Number(p.stock_qty) <= 0) return false;
         const matchesCat = currentCategory === 'ALL' || p.category === currentCategory;
         const matchesSearch = p.name.toLowerCase().includes(search) || (p.category && p.category.toLowerCase().includes(search));
         return matchesCat && matchesSearch;
@@ -1276,13 +1378,10 @@
       emptyState.classList.add('hidden');
 
       grid.innerHTML = filtered.map(p => {
-        const isOutOfStock = p.stock_qty <= 0;
-        const isLowStock = p.stock_qty > 0 && p.stock_qty <= 3;
+        const isLowStock = p.stock_qty <= 3;
         
         let stockBadge = `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-md">${p.stock_qty} en stock</span>`;
-        if (isOutOfStock) {
-          stockBadge = `<span class="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-md">Rupture</span>`;
-        } else if (isLowStock) {
+        if (isLowStock) {
           stockBadge = `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md">B9aw ghir ${p.stock_qty}</span>`;
         }
 
@@ -1292,7 +1391,7 @@
           : `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name)}" class="w-full h-full object-cover" loading="lazy">`;
 
         return `
-          <div class="bg-white rounded-3xl p-3.5 sm:p-4 border border-slate-200 shadow-soft flex flex-col justify-between transition hover:shadow-md ${isOutOfStock ? 'opacity-60' : ''}">
+          <div class="bg-white rounded-3xl p-3.5 sm:p-4 border border-slate-200 shadow-soft flex flex-col justify-between transition hover:shadow-md">
             <div>
               <div class="aspect-square w-full rounded-2xl bg-slate-50 flex items-center justify-center overflow-hidden mb-3 border border-slate-100 shadow-inner">
                 ${productImage}
@@ -1308,7 +1407,6 @@
               <span class="font-black text-sm sm:text-base text-emerald-700">${Number(p.price_mad).toFixed(2)} <span class="text-[10px]">DH</span></span>
               <button 
                 onclick="promptPurchase('${p.id}')"
-                ${isOutOfStock ? 'disabled' : ''}
                 class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1 tap-effect"
               >
                 <i data-lucide="plus" class="w-3.5 h-3.5"></i>
@@ -1452,8 +1550,12 @@
       document.getElementById('admin-stat-earnings').textContent = earningsSet
         ? `${Number(adminData.metrics.currentEarnings || 0).toFixed(2)} DH`
         : 'Non définie';
+      const earningsElement = document.getElementById('admin-stat-earnings');
+      const hasNegativeCashBalance = Number(adminData.metrics.currentEarnings || 0) < 0;
+      earningsElement.classList.toggle('text-rose-600', hasNegativeCashBalance);
+      earningsElement.classList.toggle('text-emerald-700', !hasNegativeCashBalance);
       document.getElementById('admin-earnings-description').textContent = earningsSet
-        ? 'Dernier comptage + encaissements suivants'
+        ? 'Dernier comptage + recettes − achats de stock'
         : 'Saisissez le montant compté en caisse';
       document.getElementById('admin-stat-user-count').textContent = adminData.metrics.userCount || 0;
       document.getElementById('admin-stat-prod-count').textContent = adminData.metrics.productCount || 0;
@@ -1615,24 +1717,21 @@
             </td>
             <td class="py-3 text-right">
               <div class="inline-flex items-center justify-end gap-1 flex-wrap">
+                <button onclick="openProductEdit('${escapeHtml(p.id)}')" title="Modifier le nom ou la catégorie" aria-label="Modifier ${escapeHtml(p.name)}" class="inline-flex items-center justify-center w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md border border-emerald-200 transition">
+                  <i data-lucide="pencil" class="w-4 h-4"></i>
+                </button>
                 <button onclick="saveProductImage('${escapeHtml(p.id)}')" title="Enregistrer l’URL de l’image" class="px-2 py-1 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold rounded-md text-xs border border-sky-200 transition">
                   Image
+                </button>
+                <button onclick="openInventoryPurchase('${escapeHtml(p.id)}')" title="Enregistrer un achat et déduire son coût de la caisse" aria-label="Acheter du stock de ${escapeHtml(p.name)}" class="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded-md text-xs border border-amber-200 transition">
+                  <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>
+                  Achat
                 </button>
                 <a href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(p.name + ' produit emballage')}" target="_blank" rel="noopener noreferrer" title="Rechercher une photo réelle de ${escapeHtml(p.name)}" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md text-xs border border-slate-200 transition">
                   Chercher
                 </a>
                 <input id="product-image-${escapeHtml(p.id)}" type="url" placeholder="URL HTTPS de la photo produit" value="${isImageUrl(p.image_url) ? escapeHtml(p.image_url) : ''}" aria-label="URL de l’image pour ${escapeHtml(p.name)}" class="w-44 px-2 py-1 border border-slate-200 rounded-md text-[11px]">
-                <button onclick="executeRestock('${p.id}', 5)" title="Ajouter +5 unités" class="px-2 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-bold rounded-md text-xs border border-slate-200 transition">
-                  +5
-                </button>
-                <button onclick="executeRestock('${p.id}', 10)" title="Ajouter +10 unités" class="px-2 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 font-bold rounded-md text-xs border border-slate-200 transition">
-                  +10
-                </button>
-                <input id="restock-qty-${escapeHtml(p.id)}" type="number" min="1" step="1" value="1" aria-label="Quantité à corriger pour ${escapeHtml(p.name)}" class="w-14 px-1.5 py-1 border border-slate-200 rounded-md text-xs text-center">
-                <button onclick="executeCustomRestock('${p.id}')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-md text-xs transition">
-                  Ajouter
-                </button>
-                <button onclick="executeCustomRestock('${p.id}', -1)" title="Retirer la quantité saisie" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-md text-xs border border-rose-200 transition">
+                <button onclick="promptRemoveStock('${escapeHtml(p.id)}')" title="Corriger le stock à la baisse" aria-label="Retirer du stock de ${escapeHtml(p.name)}" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-md text-xs border border-rose-200 transition">
                   Retirer
                 </button>
               </div>
@@ -1640,6 +1739,7 @@
           </tr>
         `;
       }).join('');
+      lucide.createIcons();
     }
 
     function refreshAdminFilterOptions() {
@@ -1656,6 +1756,79 @@
       userFilter.innerHTML = '<option value="ALL">Tous les utilisateurs</option>' +
         users.map(([id, name]) => `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`).join('');
       userFilter.value = users.some(([id]) => id === selectedUser) ? selectedUser : 'ALL';
+    }
+
+    function openProductEdit(productId) {
+      const product = adminData?.products.find(item => item.id === productId);
+      if (!product) {
+        showToast('Produit introuvable.', 'error');
+        return;
+      }
+      editingProductId = productId;
+      document.getElementById('edit-product-current-info').textContent =
+        `${product.name} · ${product.category}`;
+      document.getElementById('edit-product-name').value = product.name;
+
+      const categorySelect = document.getElementById('edit-product-category');
+      const categories = [...new Set(adminData.products.map(item => item.category).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b));
+      if (product.category && !categories.includes(product.category)) categories.push(product.category);
+      categorySelect.innerHTML = categories
+        .map(category => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`)
+        .join('') +
+        '<option value="__add_new_category__">+ Ajouter une catégorie…</option>';
+      categorySelect.value = product.category;
+      document.getElementById('new-product-category').value = '';
+      toggleNewProductCategory();
+      openModal('edit-product-modal');
+      document.getElementById('edit-product-name').focus();
+    }
+
+    function toggleNewProductCategory() {
+      const isAddingCategory =
+        document.getElementById('edit-product-category').value === '__add_new_category__';
+      const wrapper = document.getElementById('new-product-category-wrap');
+      const input = document.getElementById('new-product-category');
+      wrapper.classList.toggle('hidden', !isAddingCategory);
+      input.required = isAddingCategory;
+      if (isAddingCategory) input.focus();
+    }
+
+    async function saveProductDetails(event) {
+      event.preventDefault();
+      if (!editingProductId) {
+        showToast('Aucun produit sélectionné.', 'error');
+        return;
+      }
+      const nameInput = document.getElementById('edit-product-name');
+      const categorySelect = document.getElementById('edit-product-category');
+      const newCategoryInput = document.getElementById('new-product-category');
+      const name = nameInput.value.trim();
+      const category = categorySelect.value === '__add_new_category__'
+        ? newCategoryInput.value.trim()
+        : categorySelect.value.trim();
+      if (!name || name.length > 120 || !category || category.length > 60) {
+        showToast('Saisissez un nom (1 à 120 caractères) et une catégorie (1 à 60 caractères).', 'error');
+        if (!name || name.length > 120) nameInput.focus();
+        else if (categorySelect.value === '__add_new_category__') newCategoryInput.focus();
+        else categorySelect.focus();
+        return;
+      }
+
+      const res = await apiCall('admin/update_product_details', {
+        productId: editingProductId,
+        name: name,
+        category: category
+      });
+      if (!res.success) {
+        showToast(res.error || 'Impossible de modifier ce produit.', 'error');
+        return;
+      }
+      closeModal('edit-product-modal');
+      editingProductId = null;
+      showToast('Nom et catégorie du produit enregistrés.');
+      await loadAdminData();
+      await loadDashboardData();
     }
 
     async function saveProductImage(productId) {
@@ -1701,11 +1874,14 @@
       tbody.innerHTML = transactions.map(tx => {
         const typeLabel = tx.type === 'purchase' ? (tx.paid ? 'Achat payé' : 'Achat à payer')
           : (tx.type === 'payment' ? (Number(tx.amount_mad) < 0 ? 'Correction paiement' : 'Règlement')
-            : (tx.type === 'restock' ? 'Mouvement de stock' : escapeHtml(tx.type)));
-        const detail = tx.type === 'restock'
+            : (tx.type === 'inventory_purchase' ? 'Achat de stock'
+              : (tx.type === 'restock' ? 'Mouvement de stock' : escapeHtml(tx.type))));
+        const detail = tx.type === 'restock' || tx.type === 'inventory_purchase'
           ? `${tx.item_name} — ${escapeHtml(tx.notes || '')}`
           : (tx.item_name || tx.notes || '');
-        const amountLabel = tx.type === 'restock' ? '—' : `${Number(tx.amount_mad || 0).toFixed(2)} DH`;
+        const amountLabel = tx.type === 'restock' ? '—'
+          : `${tx.type === 'inventory_purchase' ? '−' : ''}${Number(tx.amount_mad || 0).toFixed(2)} DH`;
+        const amountClass = tx.type === 'inventory_purchase' ? 'text-rose-600' : 'text-slate-800';
         return `
           <tr class="hover:bg-slate-50 transition">
             <td class="py-3 text-slate-500">${escapeHtml(formatDateTime(tx.timestamp))}</td>
@@ -1713,7 +1889,7 @@
             <td class="py-3">${escapeHtml(typeLabel)}</td>
             <td class="py-3">${escapeHtml(detail)}</td>
             <td class="py-3 text-center">${Number(tx.quantity || 0)}</td>
-            <td class="py-3 text-right font-bold">${amountLabel}</td>
+            <td class="py-3 text-right font-bold ${amountClass}">${amountLabel}</td>
           </tr>
         `;
       }).join('');
@@ -1821,16 +1997,92 @@
       await loadAdminData();
     }
 
-    async function executeCustomRestock(productId, direction = 1) {
-      const input = document.getElementById(`restock-qty-${productId}`);
-      const quantity = Number(input.value);
+    function openInventoryPurchase(productId) {
+      const product = adminData?.products.find(item => item.id === productId);
+      if (!product) {
+        showToast('Produit introuvable.', 'error');
+        return;
+      }
+      inventoryPurchaseProductId = productId;
+      document.getElementById('inventory-purchase-product').textContent =
+        `${product.name} · stock actuel : ${product.stock_qty}`;
+      document.getElementById('inventory-purchase-quantity').value = '1';
+      document.getElementById('inventory-purchase-cost').value = '';
+      document.getElementById('inventory-purchase-notes').value = '';
+      openModal('inventory-purchase-modal');
+    }
+
+    async function submitInventoryPurchase(event) {
+      event.preventDefault();
+      if (!inventoryPurchaseProductId) {
+        showToast('Choisissez un produit avant d’enregistrer l’achat.', 'error');
+        return;
+      }
+      const quantityInput = document.getElementById('inventory-purchase-quantity');
+      const costInput = document.getElementById('inventory-purchase-cost');
+      const quantity = Number(quantityInput.value);
+      const cost = Number(costInput.value);
       if (!Number.isSafeInteger(quantity) || quantity <= 0) {
-        showToast('Saisissez une quantité entière supérieure à zéro.', 'error');
-        input.focus();
+        showToast('La quantité achetée doit être un entier supérieur à zéro.', 'error');
+        quantityInput.focus();
+        return;
+      }
+      if (!Number.isFinite(cost) || cost <= 0) {
+        showToast('Saisissez le coût total payé, supérieur à zéro.', 'error');
+        costInput.focus();
         return;
       }
 
-      await executeRestock(productId, quantity * direction);
+      const res = await apiCall('admin/purchase_inventory', {
+        productId: inventoryPurchaseProductId,
+        quantity: quantity,
+        cost: cost,
+        notes: document.getElementById('inventory-purchase-notes').value.trim()
+      });
+      if (!res.success) {
+        showToast(res.error || 'Impossible d’enregistrer cet achat de stock.', 'error');
+        return;
+      }
+      closeModal('inventory-purchase-modal');
+      inventoryPurchaseProductId = null;
+      playSound('success');
+      showToast(`Achat enregistré : ${cost.toFixed(2)} DH déduits de la caisse.`);
+      await loadAdminData();
+      await loadDashboardData();
+    }
+
+    function promptRemoveStock(productId) {
+      const product = adminData?.products.find(item => item.id === productId);
+      if (!product) {
+        showToast('Produit introuvable.', 'error');
+        return;
+      }
+      removingStockProductId = productId;
+      document.getElementById('remove-stock-product').textContent =
+        `${product.name} · stock actuel : ${product.stock_qty}`;
+      document.getElementById('remove-stock-quantity').value = '1';
+      openModal('remove-stock-modal');
+      document.getElementById('remove-stock-quantity').focus();
+    }
+
+    async function submitRemoveStock(event) {
+      event.preventDefault();
+      if (!removingStockProductId) {
+        showToast('Aucun produit sélectionné.', 'error');
+        return;
+      }
+      const quantityInput = document.getElementById('remove-stock-quantity');
+      const quantity = Number(quantityInput.value);
+      if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+        showToast('Saisissez une quantité entière supérieure à zéro.', 'error');
+        quantityInput.focus();
+        return;
+      }
+
+      const productId = removingStockProductId;
+      closeModal('remove-stock-modal');
+      removingStockProductId = null;
+      await executeRestock(productId, -quantity);
     }
 
     async function submitAddProduct(event) {
