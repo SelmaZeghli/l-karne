@@ -206,7 +206,7 @@
         <!-- Username -->
         <div>
           <label for="login-username" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Identifiant (Utilisateur)</label>
-          <input id="login-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9._-]+" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="clearPin()" placeholder="Saisissez votre identifiant" class="w-full bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-sm rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+          <input id="login-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9._\-]+" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="clearPin()" placeholder="Saisissez votre identifiant" class="w-full bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-sm rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
         </div>
 
         <!-- PIN Display Dots -->
@@ -446,9 +446,9 @@
         </div>
       </div>
 
-      <!-- Tabbed Admin Sections: 1. Balances & Settle | 2. Restock & Inventory -->
+      <!-- Tabbed Admin Sections: balances, inventory, and recent activity -->
       <div class="space-y-4">
-        <div class="flex border-b border-slate-200">
+        <div class="flex flex-wrap border-b border-slate-200">
           <button onclick="switchAdminTab('users')" id="admin-subtab-users" class="pb-3 px-4 font-bold text-xs sm:text-sm text-emerald-700 border-b-2 border-emerald-600 transition flex items-center gap-1.5">
             <i data-lucide="users" class="w-4 h-4"></i>
             <span>Soldes Collègues & Règlements</span>
@@ -456,6 +456,10 @@
           <button onclick="switchAdminTab('inventory')" id="admin-subtab-inventory" class="pb-3 px-4 font-semibold text-xs sm:text-sm text-slate-500 hover:text-slate-900 border-b-2 border-transparent transition flex items-center gap-1.5">
             <i data-lucide="boxes" class="w-4 h-4"></i>
             <span>Gestion Stock & Restock</span>
+          </button>
+          <button onclick="switchAdminTab('activity')" id="admin-subtab-activity" class="pb-3 px-4 font-semibold text-xs sm:text-sm text-slate-500 hover:text-slate-900 border-b-2 border-transparent transition flex items-center gap-1.5">
+            <i data-lucide="activity" class="w-4 h-4"></i>
+            <span>Activité récente</span>
           </button>
         </div>
 
@@ -537,7 +541,7 @@
 
         </div>
 
-        <div id="admin-section-activity" class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-soft space-y-4">
+        <div id="admin-section-activity" class="hidden bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-soft space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 class="font-bold text-slate-800 text-sm">Activité récente</h3>
@@ -765,7 +769,7 @@
         </div>
         <div>
           <label for="signup-username" class="block font-semibold text-slate-700 mb-1">Identifiant (3 à 30 caractères)</label>
-          <input id="signup-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9._-]+" autocomplete="username" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500">
+          <input id="signup-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9._\-]+" autocomplete="username" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500">
         </div>
         <div>
           <label for="signup-pin" class="block font-semibold text-slate-700 mb-1">PIN (4 à 6 chiffres)</label>
@@ -1615,22 +1619,15 @@
     }
 
     function switchAdminTab(tab) {
-      const uSection = document.getElementById('admin-section-users');
-      const iSection = document.getElementById('admin-section-inventory');
-      const uBtn = document.getElementById('admin-subtab-users');
-      const iBtn = document.getElementById('admin-subtab-inventory');
+      const tabs = ['users', 'inventory', 'activity'];
+      const activeTab = tabs.includes(tab) ? tab : 'users';
+      const activeClass = 'pb-3 px-4 font-bold text-xs sm:text-sm text-emerald-700 border-b-2 border-emerald-600 transition flex items-center gap-1.5';
+      const inactiveClass = 'pb-3 px-4 font-semibold text-xs sm:text-sm text-slate-500 hover:text-slate-900 border-b-2 border-transparent transition flex items-center gap-1.5';
 
-      if (tab === 'users') {
-        uSection.classList.remove('hidden');
-        iSection.classList.add('hidden');
-        uBtn.className = 'pb-3 px-4 font-bold text-xs sm:text-sm text-emerald-700 border-b-2 border-emerald-600 transition flex items-center gap-1.5';
-        iBtn.className = 'pb-3 px-4 font-semibold text-xs sm:text-sm text-slate-500 hover:text-slate-900 border-b-2 border-transparent transition flex items-center gap-1.5';
-      } else {
-        uSection.classList.add('hidden');
-        iSection.classList.remove('hidden');
-        iBtn.className = 'pb-3 px-4 font-bold text-xs sm:text-sm text-emerald-700 border-b-2 border-emerald-600 transition flex items-center gap-1.5';
-        uBtn.className = 'pb-3 px-4 font-semibold text-xs sm:text-sm text-slate-500 hover:text-slate-900 border-b-2 border-transparent transition flex items-center gap-1.5';
-      }
+      tabs.forEach(function (tabName) {
+        document.getElementById(`admin-section-${tabName}`).classList.toggle('hidden', tabName !== activeTab);
+        document.getElementById(`admin-subtab-${tabName}`).className = tabName === activeTab ? activeClass : inactiveClass;
+      });
       lucide.createIcons();
     }
 
