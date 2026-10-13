@@ -197,20 +197,16 @@
           🍪
         </div>
         <h1 class="text-2xl font-extrabold text-slate-900">Marhba bik f L-Karné !</h1>
-        <p class="text-xs text-slate-500">Kiosk libre-service SnackBox. Khtar smiytek w dakhel PIN dyalk.</p>
+        <p class="text-xs text-slate-500">Kiosk libre-service SnackBox. Kteb l'identifiant dyalk w dakhel PIN.</p>
       </div>
 
       <!-- Login Card -->
       <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-soft space-y-5">
         
-        <!-- User Selection Pills / Dropdown -->
+        <!-- Username -->
         <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Chkoun nta ? (Utilisateur)</label>
-          <div class="relative">
-            <select id="login-user-select" onchange="onUserSelectChange(this.value)" class="w-full bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-sm rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition cursor-pointer">
-              <!-- Dynamically populated from active accounts -->
-            </select>
-          </div>
+          <label for="login-username" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Identifiant (Utilisateur)</label>
+          <input id="login-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9._-]+" autocomplete="username" autocapitalize="none" spellcheck="false" oninput="clearPin()" placeholder="Saisissez votre identifiant" class="w-full bg-slate-50 border border-slate-200 font-semibold text-slate-800 text-sm rounded-xl py-2.5 px-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
         </div>
 
         <!-- PIN Display Dots -->
@@ -1046,7 +1042,6 @@
       }
 
       // If not authenticated, load login screen
-      loadPublicUsersForLogin();
       switchView('login');
       lucide.createIcons();
     });
@@ -1129,24 +1124,6 @@
     }
 
     // ==================== AUTH & LOGIN FLOW ====================
-    async function loadPublicUsersForLogin() {
-      const res = await apiCall('auth/list_public_users', {}, false);
-      const select = document.getElementById('login-user-select');
-      if (!select) return;
-
-      const users = (res.success && res.users) ? res.users : [];
-      select.innerHTML = users.length ? users.map(u => `
-        <option value="${u.username}" data-name="${u.name}" data-role="${u.role}">
-          ${u.role === 'admin' ? '🛡️' : '👤'} ${u.name} (@${u.username})
-        </option>
-      `).join('') : '<option value="">Aucun compte actif — créez un compte client ou configurez le serveur</option>';
-      if (!res.success) showToast(res.error || 'Impossible de charger les comptes.', 'error');
-    }
-
-    function onUserSelectChange(val) {
-      clearPin();
-    }
-
     function pressPin(digit) {
       if (enteredPin.length >= 6) return;
       enteredPin += digit;
@@ -1181,11 +1158,11 @@
     }
 
     async function submitLogin() {
-      const select = document.getElementById('login-user-select');
-      const username = select ? select.value : '';
+      const usernameInput = document.getElementById('login-username');
+      const username = usernameInput ? usernameInput.value.trim().toLowerCase() : '';
 
       if (!username) {
-        showToast('Veuillez sélectionner votre nom.', 'error');
+        showToast('Veuillez saisir votre identifiant.', 'error');
         return;
       }
       if (!enteredPin) {
@@ -1252,7 +1229,6 @@
       document.getElementById('app-nav').classList.add('hidden');
       document.getElementById('nav-admin').classList.add('hidden');
 
-      loadPublicUsersForLogin();
       switchView('login');
       showToast('Déconnexion réussie.');
     }
@@ -2322,8 +2298,6 @@
         logout();
       } else if (currentUser) {
         loadDashboardData();
-      } else {
-        loadPublicUsersForLogin();
       }
     }
 
