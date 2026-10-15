@@ -351,6 +351,10 @@
 
           <!-- Type filter -->
           <div class="flex items-center gap-2">
+            <span id="personal-refresh-status" class="text-[11px] text-slate-400" aria-live="polite"></span>
+            <button type="button" onclick="refreshPersonalHistory()" aria-label="Actualiser mon historique" title="Actualiser mon historique" class="group inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow transition">
+              <i data-lucide="refresh-cw" class="w-4 h-4 transition-transform duration-300 group-hover:rotate-180"></i>
+            </button>
             <select id="tab-type-filter" onchange="renderPersonalTransactions()" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl py-1.5 px-3 font-medium focus:ring-2 focus:ring-emerald-500">
               <option value="ALL">Toutes les opérations</option>
               <option value="purchase">Achats (Snacks)</option>
@@ -475,7 +479,12 @@
         <div id="admin-section-users" class="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-soft space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 class="font-bold text-slate-800 text-sm">Soldes et Dettes des Collègues</h3>
-            <span class="text-xs text-slate-400">Encaissez une dette ou enregistrez une avance</span>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-xs text-slate-400">Encaissez une dette ou enregistrez une avance</span>
+              <button type="button" onclick="refreshAdminActivity()" aria-label="Actualiser les soldes" title="Actualiser les soldes" class="group inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow transition">
+                <i data-lucide="refresh-cw" class="w-4 h-4 transition-transform duration-300 group-hover:rotate-180"></i>
+              </button>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -512,7 +521,12 @@
         <div id="admin-section-inventory" class="hidden bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-soft space-y-4">
           <div class="flex items-center justify-between">
             <h3 class="font-bold text-slate-800 text-sm">Gestion du stock</h3>
-            <span class="text-xs text-slate-400">Utilisez Achat pour ajouter du stock</span>
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-slate-400">Utilisez Achat pour ajouter du stock</span>
+              <button type="button" onclick="refreshAdminActivity()" aria-label="Actualiser le stock" title="Actualiser le stock" class="group inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow transition">
+                <i data-lucide="refresh-cw" class="w-4 h-4 transition-transform duration-300 group-hover:rotate-180"></i>
+              </button>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -572,7 +586,9 @@
               </div>
               <div class="flex items-center justify-end gap-3">
                 <span id="admin-refresh-status" class="text-[11px] text-slate-400" aria-live="polite">Actualisation automatique toutes les 30 secondes</span>
-                <button type="button" onclick="refreshAdminActivity()" class="text-[11px] font-semibold text-emerald-700 hover:underline">Actualiser</button>
+                <button type="button" onclick="refreshAdminActivity()" aria-label="Actualiser l’activité" title="Actualiser l’activité" class="group inline-flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow transition">
+                  <i data-lucide="refresh-cw" class="w-4 h-4 transition-transform duration-300 group-hover:rotate-180"></i>
+                </button>
               </div>
             </div>
 
@@ -596,9 +612,14 @@
           </div>
 
         <div id="admin-section-pin-resets" class="hidden bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-soft space-y-4">
-          <div>
-            <h3 class="font-bold text-slate-800 text-sm">Demandes de récupération du PIN</h3>
-            <p class="text-xs text-slate-500 mt-1">Vérifiez l’identité du collègue en personne avant de générer un PIN temporaire.</p>
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h3 class="font-bold text-slate-800 text-sm">Demandes de récupération du PIN</h3>
+              <p class="text-xs text-slate-500 mt-1">Vérifiez l’identité du collègue en personne avant de générer un PIN temporaire.</p>
+            </div>
+            <button type="button" onclick="refreshAdminActivity()" aria-label="Actualiser les demandes PIN" title="Actualiser les demandes PIN" class="group inline-flex items-center justify-center w-9 h-9 shrink-0 rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 hover:shadow transition">
+              <i data-lucide="refresh-cw" class="w-4 h-4 transition-transform duration-300 group-hover:rotate-180"></i>
+            </button>
           </div>
           <div id="admin-pin-reset-requests" class="space-y-2"></div>
         </div>
@@ -1380,11 +1401,11 @@
       switchView('store');
     }
 
-    async function loadDashboardData() {
-      const res = await apiCall('colleague/dashboard');
+    async function loadDashboardData(showLoading = true) {
+      const res = await apiCall('colleague/dashboard', {}, showLoading);
       if (!res.success) {
         showToast(res.error || 'Erreur lors du chargement des données.', 'error');
-        return;
+        return false;
       }
 
       currentUser = res.user;
@@ -1421,6 +1442,23 @@
       renderCategoryFilters();
       renderProductGrid();
       renderPersonalTransactions();
+      return true;
+    }
+
+    async function refreshPersonalHistory() {
+      const status = document.getElementById('personal-refresh-status');
+      if (status) status.textContent = 'Actualisation…';
+      try {
+        const refreshed = await loadDashboardData(false);
+        if (status) {
+          status.textContent = refreshed
+            ? `Mis à jour à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+            : 'Échec de l’actualisation';
+        }
+      } catch (error) {
+        console.error('Échec de l’actualisation de l’historique:', error);
+        if (status) status.textContent = 'Échec de l’actualisation';
+      }
     }
 
     // ==================== STOREFRONT / PRODUCTS ====================
@@ -1671,7 +1709,7 @@
                 ? '<span class="text-amber-700 text-[11px] font-semibold">En attente admin</span>'
                 : (cancellationStatus === 'REJECTED'
                   ? '<span class="text-rose-700 text-[11px]">Refusée</span>'
-                  : `<button type="button" onclick="requestPurchaseCancellation('${escapeHtml(t.id)}')" class="text-[11px] font-semibold text-rose-700 hover:underline">Demander</button>`)))
+                  : `<button type="button" onclick="requestPurchaseCancellation('${escapeHtml(t.id)}')" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-white text-[11px] font-bold text-rose-700 shadow-sm hover:border-rose-300 hover:bg-rose-50 hover:shadow transition"><i data-lucide="undo-2" class="w-3.5 h-3.5"></i><span>Demander l’annulation</span></button>`)))
             : '<span class="text-slate-400">—</span>');
 
         return `
@@ -1710,12 +1748,16 @@
     }
 
     // ==================== ADMIN VIEW (VIEW 3) ====================
-    async function loadAdminData() {
-      const res = await apiCall('admin/overview');
+    async function loadAdminData(quiet = false) {
+      const res = await apiCall('admin/overview', {}, !quiet);
       if (!res.success) {
-        showToast(res.error || 'Accès admin non autorisé', 'error');
-        switchView('store');
-        return;
+        if (quiet) {
+          setAdminRefreshStatus(`Échec de l’actualisation : ${res.error || 'erreur inconnue'}`, true);
+        } else {
+          showToast(res.error || 'Accès admin non autorisé', 'error');
+          switchView('store');
+        }
+        return false;
       }
 
       adminData = res;
@@ -1743,6 +1785,7 @@
       renderAdminPinResetRequests();
       renderAdminInventoryTable();
       renderAdminActivityTable();
+      return true;
     }
 
     function setAdminRefreshStatus(message, isError = false) {
@@ -1761,16 +1804,7 @@
       adminRefreshInProgress = true;
       setAdminRefreshStatus('Actualisation…');
       try {
-        const res = await apiCall('admin/overview', {}, false);
-        if (!res.success) {
-          setAdminRefreshStatus(`Échec de l’actualisation : ${res.error || 'erreur inconnue'}`, true);
-          return;
-        }
-        adminData = res;
-        refreshAdminFilterOptions();
-        renderAdminActivityTable();
-        renderAdminPinResetRequests();
-        setAdminRefreshStatus(`Mis à jour à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`);
+        await loadAdminData(true);
       } catch (error) {
         console.error('Échec de l’actualisation admin:', error);
         setAdminRefreshStatus('Échec de l’actualisation. Utilisez Actualiser pour réessayer.', true);
@@ -2143,8 +2177,8 @@
         const action = tx.type !== 'purchase' || cancelStatus === 'APPROVED'
           ? (cancelStatus === 'APPROVED' ? '<span class="text-slate-500">Annulé</span>' : '—')
           : (cancelStatus === 'REQUESTED'
-            ? `<div class="flex justify-end gap-2"><button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', true)" class="text-emerald-700 font-semibold hover:underline">Approuver la demande</button><button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', false)" class="text-rose-700 font-semibold hover:underline">Refuser</button></div>`
-            : `<button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', true)" class="text-rose-700 font-semibold hover:underline">Annuler directement</button>`);
+            ? `<div class="flex flex-wrap justify-end gap-2"><button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', true)" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold shadow-sm hover:bg-emerald-700 hover:shadow transition"><i data-lucide="check" class="w-3.5 h-3.5"></i><span>Approuver</span></button><button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', false)" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-bold shadow-sm hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 hover:shadow transition"><i data-lucide="x" class="w-3.5 h-3.5"></i><span>Refuser</span></button></div>`
+            : `<button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', true)" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 bg-white text-rose-700 font-bold shadow-sm hover:border-rose-300 hover:bg-rose-50 hover:shadow transition"><i data-lucide="ban" class="w-3.5 h-3.5"></i><span>Annuler</span></button>`);
         return `
           <tr class="hover:bg-slate-50 transition">
             <td class="py-3 text-slate-500">${escapeHtml(formatDateTime(tx.timestamp))}</td>
@@ -2157,6 +2191,7 @@
           </tr>
         `;
       }).join('');
+      lucide.createIcons();
     }
 
     async function decidePurchaseCancellation(transactionId, approve) {

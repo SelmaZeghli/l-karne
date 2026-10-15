@@ -37,7 +37,7 @@
 - **Ajout de produit avec achat initial** : Le formulaire de nouveau produit accepte le coût total payé pour son stock initial; ce montant est enregistré comme achat de stock et déduit de la caisse.
 - **Correction du catalogue** : L’administrateur peut modifier le nom, le prix de vente et choisir une catégorie existante (ou en créer une) dans une fenêtre d’édition, sans changer le stock.
 - **Recherche et filtres admin** : Recherche des collègues et produits, filtres par rôle/solde, catégorie/état du stock, type d’opération, utilisateur et date.
-- **Actualité admin** : L’activité récente et les demandes de récupération du PIN se mettent à jour automatiquement toutes les 30 secondes tant que le tableau de bord admin est ouvert; l’administrateur peut aussi actualiser immédiatement.
+- **Actualisation rapide** : Chaque onglet admin dispose d’un bouton d’actualisation qui recharge les données admin sans recharger la page; le tableau de bord se met aussi à jour automatiquement toutes les 30 secondes. Le client peut actualiser son historique personnel de la même façon.
 - **Accès admin** : Navigation réservée aux administrateurs; le serveur vérifie également le rôle pour chaque action protégée.
 - **Images produit** : L’administrateur peut enregistrer une URL HTTPS publique lors de la création ou remplacer l’image d’un produit existant depuis le tableau d’inventaire. La recherche d’images ouvre les résultats par nom de produit; il faut copier l’URL directe d’une photo autorisée. À défaut, l’emoji sert d’image.
 - **Import du classeur** : Clients et soldes importés comme comptes non activés; produits et prix importés avec stock initial nul.
