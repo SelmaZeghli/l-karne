@@ -253,6 +253,9 @@
         <button type="button" onclick="openModal('signup-modal')" class="w-full py-2.5 border border-emerald-200 text-emerald-800 font-bold rounded-2xl text-xs hover:bg-emerald-50 transition">
           Créer un compte avec un code d’invitation
         </button>
+        <button type="button" onclick="requestPinReset()" class="w-full py-1 text-xs text-slate-500 font-semibold hover:text-emerald-700 transition">
+          PIN oublié ? Demander à l’administrateur
+        </button>
 
       </div>
     </section>
@@ -366,6 +369,7 @@
                 <th class="pb-3">Article / Détail</th>
                 <th class="pb-3 text-center">Quantité</th>
                 <th class="pb-3 text-right">Montant</th>
+                <th class="pb-3 text-right">Annulation</th>
               </tr>
             </thead>
             <tbody id="tab-transactions-tbody" class="divide-y divide-slate-100 text-slate-700">
@@ -498,6 +502,13 @@
               </tbody>
             </table>
           </div>
+          <div class="border-t border-slate-100 pt-4 space-y-2">
+            <div>
+              <h4 class="font-bold text-slate-800 text-xs">Demandes de récupération du PIN</h4>
+              <p class="text-[11px] text-slate-500 mt-1">Vérifiez l’identité du collègue en personne avant de générer un PIN temporaire.</p>
+            </div>
+            <div id="admin-pin-reset-requests" class="space-y-2"></div>
+          </div>
         </div>
 
         <!-- Section B: Product Inventory Table -->
@@ -558,6 +569,7 @@
                   <option value="payment">Paiements / corrections</option>
                   <option value="restock">Stocks</option>
                   <option value="inventory_purchase">Achats de stock</option>
+                  <option value="purchase_cancellation">Annulations / remboursements</option>
                 </select>
                 <input id="admin-activity-date-filter" type="date" onchange="renderAdminActivityTable()" aria-label="Filtrer à partir de la date" class="px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500">
               </div>
@@ -572,6 +584,7 @@
                     <th class="pb-3">Détail</th>
                     <th class="pb-3 text-center">Quantité</th>
                     <th class="pb-3 text-right">Montant</th>
+                    <th class="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="admin-activity-tbody" class="divide-y divide-slate-100 text-slate-700"></tbody>
@@ -761,6 +774,7 @@
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
+
       <p class="text-xs text-slate-500">Demandez votre code privé à l’administrateur. Il reliera votre compte à votre solde existant.</p>
       <form onsubmit="submitRegistration(event)" class="space-y-3 text-xs">
         <div>
@@ -779,6 +793,26 @@
           <button type="button" onclick="closeModal('signup-modal')" class="flex-1 py-2.5 border border-slate-200 text-slate-600 font-semibold rounded-xl">Annuler</button>
           <button type="submit" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl">Créer le compte</button>
         </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="temporary-pin-change-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+      <div>
+        <h3 class="font-bold text-slate-900 text-base">Choisissez un nouveau PIN</h3>
+        <p class="text-xs text-slate-600 mt-2">Votre administrateur vous a remis un PIN temporaire. Pour protéger votre compte, créez un nouveau PIN avant de continuer.</p>
+      </div>
+      <form onsubmit="submitTemporaryPinChange(event)" class="space-y-3">
+        <div>
+          <label for="temporary-pin-new" class="block text-xs font-semibold text-slate-700 mb-1">Nouveau PIN (4 à 6 chiffres)</label>
+          <input id="temporary-pin-new" type="password" required minlength="4" maxlength="6" pattern="[0-9]{4,6}" inputmode="numeric" autocomplete="new-password" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label for="temporary-pin-confirm" class="block text-xs font-semibold text-slate-700 mb-1">Confirmer le nouveau PIN</label>
+          <input id="temporary-pin-confirm" type="password" required minlength="4" maxlength="6" pattern="[0-9]{4,6}" inputmode="numeric" autocomplete="new-password" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl font-mono focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs">Enregistrer mon nouveau PIN</button>
       </form>
     </div>
   </div>
@@ -996,6 +1030,7 @@
     let currentCategory = 'ALL';
     let enteredPin = '';
     let pendingPurchaseProduct = null;
+    let pendingPurchaseAttempt = null;
     let inventoryPurchaseProductId = null;
     let editingProductId = null;
     let removingStockProductId = null;
@@ -1109,9 +1144,13 @@
             const msg = 'L\'application Web Google exige une connexion Google (Redirection de sécurité).\n\nDans Google Apps Script :\n1. Allez dans Déployer > Nouveau déploiement.\n2. Choisissez "Tout le monde" (Anyone) pour "Qui a accès".\n\nNote : Si votre compte Google Workspace bloque l\'option "Tout le monde", déployez le script sur un compte Gmail standard (@gmail.com).';
             showToast('Accès restreint par Google (Connexion exigée)', 'error');
             alert(msg);
-            return { success: false, error: msg };
+            return { success: false, error: msg, outcomeUnknown: true };
           }
-          return { success: false, error: 'Réponse serveur non-JSON : ' + text.slice(0, 100) };
+          return {
+            success: false,
+            error: 'Réponse serveur non-JSON : ' + text.slice(0, 100),
+            outcomeUnknown: true
+          };
         }
 
         if (!data.success && data.error && (data.error.includes('Unauthorized') || data.error.includes('Session invalid'))) {
@@ -1121,7 +1160,11 @@
         return data;
       } catch (error) {
         console.error('API Error:', error);
-        return { success: false, error: 'Impossible de joindre le serveur: ' + error.message };
+        return {
+          success: false,
+          error: 'Impossible de confirmer le résultat de la demande: ' + error.message,
+          outcomeUnknown: true
+        };
       } finally {
         if (showLoading) showSpinner(false);
       }
@@ -1194,6 +1237,48 @@
       initAuthenticatedApp();
     }
 
+    async function requestPinReset() {
+      const username = document.getElementById('login-username').value.trim().toLowerCase();
+      if (!username) {
+        showToast('Saisissez votre identifiant avant de demander un nouveau PIN.', 'error');
+        return;
+      }
+      const res = await apiCall('auth/request_pin_reset', { username: username });
+      if (!res.success) {
+        showToast(res.error || 'Impossible d’envoyer la demande.', 'error');
+        return;
+      }
+      showToast(res.message || 'Si le compte existe, la demande sera transmise à l’administrateur.');
+    }
+
+    async function submitTemporaryPinChange(event) {
+      event.preventDefault();
+      const newPin = document.getElementById('temporary-pin-new').value.trim();
+      const confirmation = document.getElementById('temporary-pin-confirm').value.trim();
+      if (newPin !== confirmation) {
+        showToast('Les deux PIN ne correspondent pas.', 'error');
+        return;
+      }
+      const res = await apiCall('colleague/change_temporary_pin', { newPin: newPin });
+      if (!res.success) {
+        showToast(res.error || 'Impossible de modifier le PIN.', 'error');
+        return;
+      }
+      if (!res.token) {
+        showToast('Le PIN a peut-être été modifié, mais la session doit être vérifiée. Reconnectez-vous.', 'error');
+        return;
+      }
+      sessionToken = res.token;
+      currentUser.pin_reset_required = false;
+      sessionStorage.setItem(KEY_TOKEN, sessionToken);
+      sessionStorage.setItem(KEY_USER, JSON.stringify(currentUser));
+      document.getElementById('temporary-pin-new').value = '';
+      document.getElementById('temporary-pin-confirm').value = '';
+      closeModal('temporary-pin-change-modal');
+      showToast(res.message || 'PIN modifié.');
+      await initAuthenticatedApp();
+    }
+
     async function submitRegistration(event) {
       event.preventDefault();
       const inviteCode = document.getElementById('signup-invite-code').value.trim();
@@ -1252,6 +1337,12 @@
         document.getElementById('app-nav').classList.add('hidden');
         document.getElementById('nav-admin').classList.add('hidden');
         switchView('login');
+        return;
+      }
+      if (currentUser.pin_reset_required) {
+        document.getElementById('app-nav').classList.add('hidden');
+        document.getElementById('header-user-pill').classList.add('hidden');
+        openModal('temporary-pin-change-modal');
         return;
       }
 
@@ -1431,6 +1522,7 @@
       const p = products.find(prod => prod.id === productId);
       if (!p) return;
       pendingPurchaseProduct = p;
+      pendingPurchaseAttempt = null;
 
       const imageContainer = document.getElementById('confirm-modal-emoji');
       imageContainer.innerHTML = isImageUrl(p.image_url)
@@ -1482,14 +1574,34 @@
         return;
       }
       const total = Number(p.price_mad) * quantity;
-      const res = await apiCall('colleague/purchase', { productId: p.id, quantity: quantity, paid: paid });
+      const attemptKey = JSON.stringify([p.id, quantity, paid]);
+      if (!pendingPurchaseAttempt || pendingPurchaseAttempt.key !== attemptKey) {
+        const requestId = window.crypto && typeof window.crypto.randomUUID === 'function'
+          ? window.crypto.randomUUID()
+          : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+        pendingPurchaseAttempt = { key: attemptKey, requestId: requestId };
+      }
+      const res = await apiCall('colleague/purchase', {
+        productId: p.id,
+        quantity: quantity,
+        paid: paid,
+        requestId: pendingPurchaseAttempt.requestId
+      });
 
       if (!res.success) {
         playSound('error');
-        showToast(res.error || "Erreur lors de l'achat", 'error');
+        const errorMessage = res.error || "Erreur lors de l'achat";
+        if (res.outcomeUnknown || res.retrySafe === false) {
+          alert(errorMessage + '\n\nNe réessayez pas avant d’avoir vérifié le solde, le stock et l’historique des transactions.');
+          return;
+        }
+        if (res.retrySafe === true) pendingPurchaseAttempt = null;
+        alert(errorMessage + '\n\nVérifiez les informations puis réessayez.');
+        openModal('purchase-modal');
         return;
       }
 
+      pendingPurchaseAttempt = null;
       playSound('success');
       showToast(paid
         ? `Paiement de ${total.toFixed(2)} DH enregistré pour ${p.name}.`
@@ -1508,6 +1620,7 @@
 
       const filtered = personalTransactions.filter(t => {
         if (typeFilter === 'ALL') return true;
+        if (typeFilter === 'purchase') return t.type === 'purchase' || t.type === 'purchase_cancellation';
         return t.type === typeFilter;
       });
 
@@ -1522,31 +1635,65 @@
 
       tbody.innerHTML = filtered.map(t => {
         const isPurchase = t.type === 'purchase';
+        const isCancellation = t.type === 'purchase_cancellation';
         const isCorrection = t.type === 'payment' && Number(t.amount_mad) < 0;
+        const cancellationStatus = String(t.cancel_status || '').toUpperCase();
         const dateStr = formatDateTime(t.timestamp);
-        const amountLabel = isPurchase
+        const amountLabel = isCancellation
+          ? `−${Number(t.amount_mad).toFixed(2)}`
+          : (isPurchase
           ? (t.paid ? `Payé ${Number(t.amount_mad).toFixed(2)}` : `+${Number(t.amount_mad).toFixed(2)}`)
-          : `${isCorrection ? '+' : '-'}${Math.abs(Number(t.amount_mad)).toFixed(2)}`;
+          : `${isCorrection ? '+' : '-'}${Math.abs(Number(t.amount_mad)).toFixed(2)}`);
+        const transactionLabel = isCancellation
+          ? 'Achat annulé'
+          : (isPurchase
+            ? (cancellationStatus === 'APPROVED' ? 'Achat annulé' : (t.paid ? 'Achat payé' : 'Achat à payer'))
+            : (isCorrection ? 'Correction' : 'Règlement'));
+        const cancellationAction = isCancellation
+          ? '<span class="text-slate-400">—</span>'
+          : (isPurchase
+            ? (cancellationStatus === 'APPROVED'
+              ? '<span class="text-slate-500 text-[11px]">Annulé</span>'
+              : (cancellationStatus === 'REQUESTED'
+                ? '<span class="text-amber-700 text-[11px] font-semibold">En attente admin</span>'
+                : (cancellationStatus === 'REJECTED'
+                  ? '<span class="text-rose-700 text-[11px]">Refusée</span>'
+                  : `<button type="button" onclick="requestPurchaseCancellation('${escapeHtml(t.id)}')" class="text-[11px] font-semibold text-rose-700 hover:underline">Demander</button>`)))
+            : '<span class="text-slate-400">—</span>');
 
         return `
           <tr class="hover:bg-slate-50 transition">
             <td class="py-3 font-medium text-slate-500 text-xs">${dateStr}</td>
             <td class="py-3">
               ${isPurchase 
-                ? `<span class="inline-flex items-center gap-1 ${t.paid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'} text-[11px] font-bold px-2 py-0.5 rounded-full"><i data-lucide="shopping-bag" class="w-3 h-3"></i> ${t.paid ? 'Achat payé' : 'Achat à payer'}</span>`
-                : `<span class="inline-flex items-center gap-1 ${isCorrection ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'} text-[11px] font-bold px-2 py-0.5 rounded-full"><i data-lucide="check-circle" class="w-3 h-3"></i> ${isCorrection ? 'Correction' : 'Règlement'}</span>`
+                ? `<span class="inline-flex items-center gap-1 ${cancellationStatus === 'APPROVED' ? 'bg-slate-100 text-slate-600' : (t.paid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')} text-[11px] font-bold px-2 py-0.5 rounded-full"><i data-lucide="shopping-bag" class="w-3 h-3"></i> ${escapeHtml(transactionLabel)}</span>`
+                : `<span class="inline-flex items-center gap-1 ${isCancellation || isCorrection ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'} text-[11px] font-bold px-2 py-0.5 rounded-full"><i data-lucide="${isCancellation ? 'undo-2' : 'check-circle'}" class="w-3 h-3"></i> ${escapeHtml(transactionLabel)}</span>`
               }
             </td>
             <td class="py-3 font-semibold text-slate-800">${escapeHtml(t.item_name || 'Règlement solde')}</td>
             <td class="py-3 text-center text-slate-600 font-medium">${t.quantity || 1}</td>
-            <td class="py-3 text-right font-black ${isPurchase && !t.paid || isCorrection ? 'text-rose-600' : 'text-emerald-600'}">
+            <td class="py-3 text-right font-black ${isCancellation || isPurchase && !t.paid || isCorrection ? 'text-rose-600' : 'text-emerald-600'}">
               ${amountLabel} DH
             </td>
+            <td class="py-3 text-right">${cancellationAction}</td>
           </tr>
         `;
       }).join('');
 
       lucide.createIcons();
+    }
+
+    async function requestPurchaseCancellation(transactionId) {
+      const confirmed = window.confirm('Envoyer une demande d’annulation à l’administrateur ? Si elle est approuvée, vous devrez rendre l’article; tout remboursement en espèces sera effectué par l’administrateur.');
+      if (!confirmed) return;
+
+      const res = await apiCall('colleague/request_purchase_cancellation', { transactionId: transactionId });
+      if (!res.success) {
+        showToast(res.error || 'Impossible d’envoyer la demande.', 'error');
+        return;
+      }
+      showToast(res.message || 'Demande envoyée à l’administrateur.');
+      await loadDashboardData();
     }
 
     // ==================== ADMIN VIEW (VIEW 3) ====================
@@ -1579,8 +1726,41 @@
 
       refreshAdminFilterOptions();
       renderAdminUsersTable();
+      renderAdminPinResetRequests();
       renderAdminInventoryTable();
       renderAdminActivityTable();
+    }
+
+    function renderAdminPinResetRequests() {
+      const container = document.getElementById('admin-pin-reset-requests');
+      if (!container) return;
+      const requests = adminData.pinResetRequests || [];
+      if (!requests.length) {
+        container.innerHTML = '<p class="text-[11px] text-slate-400">Aucune demande en attente.</p>';
+        return;
+      }
+      container.innerHTML = requests.map(request => `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-amber-50 border border-amber-100 p-3">
+          <div class="min-w-0">
+            <div class="text-xs font-bold text-slate-800">${escapeHtml(request.name)} <span class="font-normal text-slate-500">(${escapeHtml(request.username || 'compte non activé')})</span></div>
+            <div class="text-[10px] text-amber-800 mt-0.5">${request.resetRequired ? 'PIN temporaire déjà créé — le collègue doit encore le changer.' : 'Demande de récupération en attente.'}</div>
+          </div>
+          <button type="button" data-user-id="${escapeHtml(request.id)}" onclick="adminResetUserPin(this.dataset.userId)" class="shrink-0 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[11px]">
+            ${request.resetRequired ? 'Générer un autre PIN' : 'Générer un PIN temporaire'}
+          </button>
+        </div>
+      `).join('');
+    }
+
+    async function adminResetUserPin(userId) {
+      if (!window.confirm('Confirmez-vous avoir vérifié en personne l’identité de ce collègue ? Le PIN temporaire s’affichera une seule fois.')) return;
+      const res = await apiCall('admin/reset_user_pin', { userId: userId });
+      if (!res.success) {
+        showToast(res.error || 'Impossible de réinitialiser le PIN.', 'error');
+        return;
+      }
+      window.alert(`PIN temporaire pour ${res.name} : ${res.temporaryPin}\n\nRemettez-le directement au collègue. Il devra choisir un nouveau PIN avant d’utiliser l’application.`);
+      await loadAdminData();
     }
 
     async function exportInvitationCodes() {
@@ -1890,13 +2070,22 @@
         const typeLabel = tx.type === 'purchase' ? (tx.paid ? 'Achat payé' : 'Achat à payer')
           : (tx.type === 'payment' ? (Number(tx.amount_mad) < 0 ? 'Correction paiement' : 'Règlement')
             : (tx.type === 'inventory_purchase' ? 'Achat de stock'
-              : (tx.type === 'restock' ? 'Mouvement de stock' : escapeHtml(tx.type))));
+              : (tx.type === 'purchase_cancellation' ? 'Annulation / remboursement'
+                : (tx.type === 'restock' ? 'Mouvement de stock' : escapeHtml(tx.type)))));
         const detail = tx.type === 'restock' || tx.type === 'inventory_purchase'
           ? `${tx.item_name} — ${escapeHtml(tx.notes || '')}`
-          : (tx.item_name || tx.notes || '');
+          : (tx.type === 'purchase_cancellation'
+            ? `${tx.item_name} — ${escapeHtml(tx.notes || '')}`
+            : (tx.item_name || tx.notes || ''));
         const amountLabel = tx.type === 'restock' ? '—'
-          : `${tx.type === 'inventory_purchase' ? '−' : ''}${Number(tx.amount_mad || 0).toFixed(2)} DH`;
-        const amountClass = tx.type === 'inventory_purchase' ? 'text-rose-600' : 'text-slate-800';
+          : `${tx.type === 'inventory_purchase' || tx.type === 'purchase_cancellation' ? '−' : ''}${Number(tx.amount_mad || 0).toFixed(2)} DH`;
+        const amountClass = tx.type === 'inventory_purchase' || tx.type === 'purchase_cancellation' ? 'text-rose-600' : 'text-slate-800';
+        const cancelStatus = String(tx.cancel_status || '').toUpperCase();
+        const action = tx.type !== 'purchase' || cancelStatus === 'APPROVED'
+          ? (cancelStatus === 'APPROVED' ? '<span class="text-slate-500">Annulé</span>' : '—')
+          : (cancelStatus === 'REQUESTED'
+            ? `<div class="flex justify-end gap-2"><button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', true)" class="text-emerald-700 font-semibold hover:underline">Approuver</button><button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', false)" class="text-rose-700 font-semibold hover:underline">Refuser</button></div>`
+            : `<button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', true)" class="text-rose-700 font-semibold hover:underline">Annuler l’achat</button>`);
         return `
           <tr class="hover:bg-slate-50 transition">
             <td class="py-3 text-slate-500">${escapeHtml(formatDateTime(tx.timestamp))}</td>
@@ -1905,9 +2094,29 @@
             <td class="py-3">${escapeHtml(detail)}</td>
             <td class="py-3 text-center">${Number(tx.quantity || 0)}</td>
             <td class="py-3 text-right font-bold ${amountClass}">${amountLabel}</td>
+            <td class="py-3 text-right text-[11px]">${action}</td>
           </tr>
         `;
       }).join('');
+    }
+
+    async function decidePurchaseCancellation(transactionId, approve) {
+      const confirmed = approve
+        ? window.confirm('Confirmer l’annulation ? Cette action rétablit le stock et corrige la dette; pour un achat payé, elle enregistre le remboursement et diminue la caisse. Confirmez seulement après avoir récupéré l’article et remboursé les espèces si nécessaire.')
+        : window.confirm('Refuser cette demande d’annulation ?');
+      if (!confirmed) return;
+
+      const res = await apiCall('admin/decide_purchase_cancellation', {
+        transactionId: transactionId,
+        approve: approve
+      });
+      if (!res.success) {
+        showToast(res.error || 'Impossible de traiter l’annulation.', 'error');
+        return;
+      }
+      showToast(res.message || (approve ? 'Achat annulé.' : 'Demande refusée.'));
+      await loadAdminData();
+      await loadDashboardData();
     }
 
     // ==================== ADMIN ACTIONS ====================
