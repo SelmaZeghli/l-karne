@@ -2090,8 +2090,8 @@
         const action = tx.type !== 'purchase' || cancelStatus === 'APPROVED'
           ? (cancelStatus === 'APPROVED' ? '<span class="text-slate-500">Annulé</span>' : '—')
           : (cancelStatus === 'REQUESTED'
-            ? `<div class="flex justify-end gap-2"><button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', true)" class="text-emerald-700 font-semibold hover:underline">Approuver</button><button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', false)" class="text-rose-700 font-semibold hover:underline">Refuser</button></div>`
-            : `<button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', true)" class="text-rose-700 font-semibold hover:underline">Annuler l’achat</button>`);
+            ? `<div class="flex justify-end gap-2"><button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', true)" class="text-emerald-700 font-semibold hover:underline">Approuver la demande</button><button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', false)" class="text-rose-700 font-semibold hover:underline">Refuser</button></div>`
+            : `<button type="button" onclick="decidePurchaseCancellation('${escapeHtml(tx.id)}', true)" class="text-rose-700 font-semibold hover:underline">Annuler directement</button>`);
         return `
           <tr class="hover:bg-slate-50 transition">
             <td class="py-3 text-slate-500">${escapeHtml(formatDateTime(tx.timestamp))}</td>
