@@ -465,6 +465,10 @@
             <i data-lucide="activity" class="w-4 h-4"></i>
             <span>Activité récente</span>
           </button>
+          <button onclick="switchAdminTab('pin-resets')" id="admin-subtab-pin-resets" class="pb-3 px-4 font-semibold text-xs sm:text-sm text-slate-500 hover:text-slate-900 border-b-2 border-transparent transition flex items-center gap-1.5">
+            <i data-lucide="key-round" class="w-4 h-4"></i>
+            <span>Récupération PIN</span>
+          </button>
         </div>
 
         <!-- Section A: Users Balance Ledger Table -->
@@ -501,13 +505,6 @@
                 <!-- Dynamically populated -->
               </tbody>
             </table>
-          </div>
-          <div class="border-t border-slate-100 pt-4 space-y-2">
-            <div>
-              <h4 class="font-bold text-slate-800 text-xs">Demandes de récupération du PIN</h4>
-              <p class="text-[11px] text-slate-500 mt-1">Vérifiez l’identité du collègue en personne avant de générer un PIN temporaire.</p>
-            </div>
-            <div id="admin-pin-reset-requests" class="space-y-2"></div>
           </div>
         </div>
 
@@ -574,6 +571,7 @@
                 <input id="admin-activity-date-filter" type="date" onchange="renderAdminActivityTable()" aria-label="Filtrer à partir de la date" class="px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500">
               </div>
             </div>
+
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs sm:text-sm">
                 <thead>
@@ -592,6 +590,14 @@
             </div>
           <div id="admin-activity-empty-state" class="hidden text-center py-8 text-slate-400 text-xs">Aucune opération pour ces filtres.</div>
           </div>
+
+        <div id="admin-section-pin-resets" class="hidden bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-soft space-y-4">
+          <div>
+            <h3 class="font-bold text-slate-800 text-sm">Demandes de récupération du PIN</h3>
+            <p class="text-xs text-slate-500 mt-1">Vérifiez l’identité du collègue en personne avant de générer un PIN temporaire.</p>
+          </div>
+          <div id="admin-pin-reset-requests" class="space-y-2"></div>
+        </div>
       </div>
 
     </section>
@@ -1799,7 +1805,7 @@
     }
 
     function switchAdminTab(tab) {
-      const tabs = ['users', 'inventory', 'activity'];
+      const tabs = ['users', 'inventory', 'activity', 'pin-resets'];
       const activeTab = tabs.includes(tab) ? tab : 'users';
       const activeClass = 'pb-3 px-4 font-bold text-xs sm:text-sm text-emerald-700 border-b-2 border-emerald-600 transition flex items-center gap-1.5';
       const inactiveClass = 'pb-3 px-4 font-semibold text-xs sm:text-sm text-slate-500 hover:text-slate-900 border-b-2 border-transparent transition flex items-center gap-1.5';
