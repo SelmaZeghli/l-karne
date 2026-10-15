@@ -570,6 +570,10 @@
                 </select>
                 <input id="admin-activity-date-filter" type="date" onchange="renderAdminActivityTable()" aria-label="Filtrer à partir de la date" class="px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500">
               </div>
+              <div class="flex items-center justify-end gap-3">
+                <span id="admin-refresh-status" class="text-[11px] text-slate-400" aria-live="polite">Actualisation automatique toutes les 30 secondes</span>
+                <button type="button" onclick="refreshAdminActivity()" class="text-[11px] font-semibold text-emerald-700 hover:underline">Actualiser</button>
+              </div>
             </div>
 
             <div class="overflow-x-auto">
@@ -1042,6 +1046,9 @@
     let removingStockProductId = null;
     let settleTargetUser = null;
     let sessionUserValidated = false;
+    let adminRefreshTimer = null;
+    let adminRefreshInProgress = false;
+    const ADMIN_REFRESH_INTERVAL_MS = 30000;
 
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -1712,6 +1719,7 @@
       }
 
       adminData = res;
+      setAdminRefreshStatus(`Mis à jour à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`);
 
       // Stats
       document.getElementById('admin-stat-total-debt').textContent = `${(adminData.metrics.totalOfficeDebt || 0).toFixed(2)} DH`;
@@ -1735,6 +1743,51 @@
       renderAdminPinResetRequests();
       renderAdminInventoryTable();
       renderAdminActivityTable();
+    }
+
+    function setAdminRefreshStatus(message, isError = false) {
+      const status = document.getElementById('admin-refresh-status');
+      if (!status) return;
+      status.textContent = message;
+      status.classList.toggle('text-rose-600', isError);
+      status.classList.toggle('text-slate-400', !isError);
+    }
+
+    async function refreshAdminActivity() {
+      if (adminRefreshInProgress || !adminData ||
+          document.hidden ||
+          document.getElementById('view-admin').classList.contains('hidden')) return;
+
+      adminRefreshInProgress = true;
+      setAdminRefreshStatus('Actualisation…');
+      try {
+        const res = await apiCall('admin/overview', {}, false);
+        if (!res.success) {
+          setAdminRefreshStatus(`Échec de l’actualisation : ${res.error || 'erreur inconnue'}`, true);
+          return;
+        }
+        adminData = res;
+        refreshAdminFilterOptions();
+        renderAdminActivityTable();
+        renderAdminPinResetRequests();
+        setAdminRefreshStatus(`Mis à jour à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`);
+      } catch (error) {
+        console.error('Échec de l’actualisation admin:', error);
+        setAdminRefreshStatus('Échec de l’actualisation. Utilisez Actualiser pour réessayer.', true);
+      } finally {
+        adminRefreshInProgress = false;
+      }
+    }
+
+    function startAdminAutoRefresh() {
+      if (adminRefreshTimer) clearInterval(adminRefreshTimer);
+      adminRefreshTimer = setInterval(refreshAdminActivity, ADMIN_REFRESH_INTERVAL_MS);
+    }
+
+    function stopAdminAutoRefresh() {
+      if (!adminRefreshTimer) return;
+      clearInterval(adminRefreshTimer);
+      adminRefreshTimer = null;
     }
 
     function renderAdminPinResetRequests() {
@@ -2419,6 +2472,9 @@
 
       if (viewName === 'admin') {
         loadAdminData();
+        startAdminAutoRefresh();
+      } else {
+        stopAdminAutoRefresh();
       }
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
